@@ -1,0 +1,1107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:util="http://www.springframework.org/schema/util"
+   xsi:schemaLocation="
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+     http://www.springframework.org/schema/util  http://www.springframework.org/schema/util/spring-util-3.1.xsd">
+
+    <!-- Data source bean -->
+    <bean id="postgresDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="org.postgresql.Driver" />
+        <property name="url" value="jdbc:postgresql://postgres-service:5432/db" />
+        <property name="username" value="############" />
+        <property name="password" value="############" />
+    </bean>
+    <!-- Ignite Configuration -->
+    <bean class="org.apache.ignite.configuration.IgniteConfiguration">
+        <property name="discoverySpi">
+            <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
+                <property name="ipFinder">
+                    <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.kubernetes.TcpDiscoveryKubernetesIpFinder">
+                        <constructor-arg>
+                            <bean class="org.apache.ignite.kubernetes.configuration.KubernetesConnectionConfiguration">
+                                <property name="namespace" value="ignite" />
+                                <property name="serviceName" value="ignite-service" />
+                            </bean>
+                        </constructor-arg>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+        <property name="cacheConfiguration">
+            <list>
+                <!-- Configuration for NationCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="NationCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="NationCache"/>
+                                        <property name="keyType" value="java.lang.Integer"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Nation"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="nation"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="n_nationkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="n_nationkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="n_nationkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="n_nationkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="n_name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="n_name"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="n_regionkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="n_regionkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="n_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="n_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Integer"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Nation"/>
+                                <property name="keyFieldName" value="n_nationkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>n_nationkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="n_nationkey" value="java.lang.Integer"/>
+                                        <entry key="n_name" value="java.lang.String"/>
+                                        <entry key="n_regionkey" value="java.lang.Integer"/>
+                                        <entry key="n_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for RegionCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="RegionCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="RegionCache"/>
+                                        <property name="keyType" value="java.lang.Integer"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Region"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="region"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="r_regionkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="r_regionkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="r_regionkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="r_regionkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="r_name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="r_name"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="r_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="r_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Integer"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Region"/>
+                                <property name="keyFieldName" value="r_regionkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>r_regionkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="r_regionkey" value="java.lang.Integer"/>
+                                        <entry key="r_name" value="java.lang.String"/>
+                                        <entry key="r_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for PartCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="PartCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Part"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="part"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_partkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="p_partkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_partkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="p_partkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_name"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_mfgr"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_mfgr"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_brand"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_brand"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_type"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_type"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_size"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="p_size"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_container"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_container"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_retailprice"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="p_retailprice"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="p_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="p_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Part"/>
+                                <property name="keyFieldName" value="p_partkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>p_partkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="p_partkey" value="java.lang.Long"/>
+                                        <entry key="p_name" value="java.lang.String"/>
+                                        <entry key="p_mfgr" value="java.lang.String"/>
+                                        <entry key="p_brand" value="java.lang.String"/>
+                                        <entry key="p_type" value="java.lang.String"/>
+                                        <entry key="p_size" value="java.lang.Integer"/>
+                                        <entry key="p_container" value="java.lang.String"/>
+                                        <entry key="p_retailprice" value="java.lang.Double"/>
+                                        <entry key="p_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for SupplierCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="SupplierCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="SupplierCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Supplier"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="supplier"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_suppkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="s_suppkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_suppkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="s_suppkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="s_name"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_address"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="s_address"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_nationkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="s_nationkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_phone"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="s_phone"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_acctbal"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="s_acctbal"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="s_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="s_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Supplier"/>
+                                <property name="keyFieldName" value="s_suppkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>s_suppkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="s_suppkey" value="java.lang.Long"/>
+                                        <entry key="s_name" value="java.lang.String"/>
+                                        <entry key="s_address" value="java.lang.String"/>
+                                        <entry key="s_nationkey" value="java.lang.Integer"/>
+                                        <entry key="s_phone" value="java.lang.String"/>
+                                        <entry key="s_acctbal" value="java.lang.Double"/>
+                                        <entry key="s_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for PartsuppCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="PartsuppCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="PartsuppCache"/>
+                                        <property name="keyType" value="net.atos.ignite.services.cacheloader.PartsuppKey"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Partsupp"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="partsupp"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_partkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="ps_partkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_suppkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="ps_suppkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_partkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="ps_partkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_suppkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="ps_suppkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_availqty"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="ps_availqty"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_supplycost"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="ps_supplycost"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="ps_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="ps_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="net.atos.ignite.services.cacheloader.PartsuppKey"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Partsupp"/>
+                                <property name="keyFieldName" value="ps_partkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>ps_partkey</value>
+                                        <value>ps_suppkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="ps_partkey" value="java.lang.Long"/>
+                                        <entry key="ps_suppkey" value="java.lang.Long"/>
+                                        <entry key="ps_availqty" value="java.lang.Long"/>
+                                        <entry key="ps_supplycost" value="java.lang.Double"/>
+                                        <entry key="ps_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for CustomerCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="CustomerCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="CustomerCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Customer"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="customer"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_custkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="c_custkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_custkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="c_custkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_name"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="c_name"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_address"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="c_address"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_nationkey"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="c_nationkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_phone"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="c_phone"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_acctbal"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="c_acctbal"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_mktsegment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="c_mktsegment"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="c_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="c_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Customer"/>
+                                <property name="keyFieldName" value="c_custkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>ps_partkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="c_custkey" value="java.lang.Long"/>
+                                        <entry key="c_name" value="java.lang.String"/>
+                                        <entry key="c_address" value="java.lang.String"/>
+                                        <entry key="c_nationkey" value="java.lang.Integer"/>
+                                        <entry key="c_phone" value="java.lang.String"/>
+                                        <entry key="c_acctbal" value="java.lang.Double"/>
+                                        <entry key="c_mktsegment" value="java.lang.String"/>
+                                        <entry key="c_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for OrderCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="OrdersCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="OrdersCache"/>
+                                        <property name="keyType" value="java.lang.Long"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Orders"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="orders"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_orderkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="o_orderkey"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_orderkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="o_orderkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_custkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="o_custkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.CHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_orderstatus"/>
+                                                    <constructor-arg value="char"/>
+                                                    <constructor-arg value="o_orderstatus"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_totalprice"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="o_totalprice"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DATE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_orderdate"/>
+                                                    <constructor-arg value="java.sql.Date"/>
+                                                    <constructor-arg value="o_orderdate"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_orderpriority"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="o_orderpriority"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_clerk"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="o_clerk"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.INTEGER"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_shippriority"/>
+                                                    <constructor-arg value="int"/>
+                                                    <constructor-arg value="o_shippriority"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="o_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="o_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="java.lang.Long"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Orders"/>
+                                <property name="keyFieldName" value="o_orderkey"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>o_orderkey</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="o_orderkey" value="java.lang.Long"/>
+                                        <entry key="o_custkey" value="java.lang.Long"/>
+                                        <entry key="o_orderstatus" value="java.lang.Char"/>
+                                        <entry key="o_totalprice" value="java.lang.Double"/>
+                                        <entry key="o_orderdate" value="java.sql.Date"/>
+                                        <entry key="o_orderpriority" value="java.lang.String"/>
+                                        <entry key="o_clerk" value="java.lang.String"/>
+                                        <entry key="o_shippriority" value="java.lang.Integer"/>
+                                        <entry key="o_comment" value="java.lang.String"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <!-- Configuration for LineitemCache -->
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="LineitemCache"/>
+                    <property name="cacheMode" value="REPLICATED"/>
+                    <property name="atomicityMode" value="ATOMIC"/>
+                    <property name="cacheStoreFactory">
+                        <bean class="org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory">
+                            <property name="dataSourceBean" value="postgresDataSource"/>
+                            <property name="dialect">
+                                <bean class="org.apache.ignite.cache.store.jdbc.dialect.BasicJdbcDialect"/>
+                            </property>
+                            <property name="types">
+                                <list>
+                                    <bean class="org.apache.ignite.cache.store.jdbc.JdbcType">
+                                        <property name="cacheName" value="LineitemCache"/>
+                                        <property name="keyType" value="net.atos.ignite.services.cacheloader.LineitemKey"/>
+                                        <property name="valueType" value="net.atos.ignite.services.cacheloader.Lineitem"/>
+                                        <!--Specify the schema if applicable -->
+                                        <property name="databaseSchema" value="public"/>
+                                        <property name="databaseTable" value="lineitem"/>
+                                        <property name="keyFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_orderkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_orderkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_linenumber"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_linenumber"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                        <property name="valueFields">
+                                            <list>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_orderkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_orderkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_partkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_partkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_suppkey"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_suppkey"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.BIGINT"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_linenumber"/>
+                                                    <constructor-arg value="long"/>
+                                                    <constructor-arg value="l_linenumber"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_quantity"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="l_quantity"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_extendedprice"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="l_extendedprice"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_discount"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="l_discount"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DOUBLE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_tax"/>
+                                                    <constructor-arg value="double"/>
+                                                    <constructor-arg value="l_tax"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.CHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_returnflag"/>
+                                                    <constructor-arg value="char"/>
+                                                    <constructor-arg value="l_returnflag"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.CHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_linestatus"/>
+                                                    <constructor-arg value="char"/>
+                                                    <constructor-arg value="l_linestatus"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DATE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_shipdate"/>
+                                                    <constructor-arg value="java.sql.Date"/>
+                                                    <constructor-arg value="l_shipdate"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DATE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_commitdate"/>
+                                                    <constructor-arg value="java.sql.Date"/>
+                                                    <constructor-arg value="l_commitdate"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.DATE"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_receiptdate"/>
+                                                    <constructor-arg value="java.sql.Date"/>
+                                                    <constructor-arg value="l_receiptdate"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_shipinstruct"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="l_shipinstruct"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_shipmode"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="l_shipmode"/>
+                                                </bean>
+                                                <bean class="org.apache.ignite.cache.store.jdbc.JdbcTypeField">
+                                                    <constructor-arg>
+                                                        <util:constant static-field="java.sql.Types.VARCHAR"/>
+                                                    </constructor-arg>
+                                                    <constructor-arg value="l_comment"/>
+                                                    <constructor-arg value="java.lang.String"/>
+                                                    <constructor-arg value="l_comment"/>
+                                                </bean>
+                                            </list>
+                                        </property>
+                                    </bean>
+                                </list>
+                            </property>
+                        </bean>
+                    </property>
+                    <property name="readThrough" value="true"/>
+                    <property name="writeThrough" value="true"/>
+                    <!-- Configure query entities if you want to use SQL queries -->
+                    <property name="queryEntities">
+                        <list>
+                            <bean class="org.apache.ignite.cache.QueryEntity">
+                                <property name="keyType" value="net.atos.ignite.services.cacheloader.LineitemKey"/>
+                                <property name="valueType" value="net.atos.ignite.services.cacheloader.Lineitem"/>
+                                <property name="keyFields">
+                                    <list>
+                                        <value>l_orderkey</value>
+                                        <value>l_linenumber</value>
+                                    </list>
+                                </property>
+                                <property name="fields">
+                                    <map>
+                                    	<entry key="l_orderkey" value="java.lang.Long"/>
+                                        <entry key="l_partkey" value="java.lang.Long"/>
+                                        <entry key="l_suppkey" value="java.lang.Long"/>
+                                        <entry key="l_linenumber" value="java.lang.Long"/>
+                                        <entry key="l_quantity" value="java.lang.Double"/>
+                                        <entry key="l_extendedprice" value="java.lang.Double"/>
+                                        <entry key="l_discount" value="java.lang.Double"/>
+                                        <entry key="l_tax" value="java.lang.Double"/>
+                                        <entry key="l_returnflag" value="java.lang.Char"/>
+                                        <entry key="l_linestatus" value="java.lang.Char"/>
+                                        <entry key="l_shipdate" value="java.sql.Date"/>
+                                        <entry key="l_commitdate" value="java.sql.Date"/>
+                                        <entry key="l_receiptdate" value="java.sql.Date"/>
+                                        <entry key="l_shipinstruct" value="l_shipinstruct"/>
+                                        <entry key="l_shipmode" value="l_shipmode"/>
+                                        <entry key="l_comment" value="l_comment"/>
+                                    </map>
+                                </property>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+</beans>
